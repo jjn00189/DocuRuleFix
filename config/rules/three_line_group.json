@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "name": "三行一组结构校验规则",
+  "description": "校验文档是否按每3行一组的结构排列：标题行、URL行、图片行",
+  "rules": [
+    {
+      "type": "structure_validation",
+      "enabled": true,
+      "config": {
+        "structure_type": "three_line_group",
+        "title_mode": "1",
+        "rules": {
+          "title_line": {
+            "pattern": "^\\d+[.|,|)][\\s\\S]+",
+            "require_all_chars": [".", "_", "："],
+            "parse_fields": {
+              "opinion_field": { "start": ".", "end": "_" },
+              "source_field": { "start": "_", "end": "：" },
+              "title_field": { "start": "：", "end": null }
+            }
+          },
+          "url_line": {
+            "pattern": "^https?://(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
+          },
+          "image_line": {
+            "text_only": false,
+            "allow_images": true
+          }
+        }
+      }
+    }
+  ]
+}
