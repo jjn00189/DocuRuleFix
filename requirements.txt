@@ -14,3 +14,6 @@ jsonschema==4.20.0
 loguru==0.7.2
 click==8.1.7
 tqdm==4.66.1
+
+# macOS 图标支持 (可选)
+pyobjc-framework-Cocoa>=12.0; sys_platform == "darwin"

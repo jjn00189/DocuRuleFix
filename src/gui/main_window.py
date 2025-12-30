@@ -9,6 +9,9 @@ import tkinter as tk
 from tkinter import filedialog
 import subprocess
 import os
+import sys
+from pathlib import Path
+from loguru import logger
 
 from gui.utils.theme_manager import ThemeManager
 from gui.main_controller import MainController
@@ -32,6 +35,9 @@ class MainWindow(ctk.CTk):
         # 设置窗口
         self.title("DocuRuleFix - Word 文档处理工具")
         self.geometry("900x800")
+
+        # 设置窗口图标
+        self._set_window_icon()
 
         # 初始化管理器
         self.theme_manager = ThemeManager()
@@ -92,6 +98,96 @@ class MainWindow(ctk.CTk):
         # 结果面板
         self.results_panel = ResultsPanel(right_panel)
         self.results_panel.pack(fill="both", expand=True)
+
+    def _set_window_icon(self):
+        """设置窗口图标"""
+        # 尝试多个可能的图标路径
+        # macOS 优先使用 PNG/ICNS，Windows 优先使用 ICO
+        if sys.platform == 'darwin':  # macOS
+            icon_paths = [
+                # 开发环境路径 - 优先 PNG（通过 tk.PhotoImage）
+                Path(__file__).parent.parent / "resources" / "icons" / "icon_512x512.png",
+                Path(__file__).parent.parent / "resources" / "icons" / "icon_256x256.png",
+                # 打包后的路径
+                Path("resources") / "icons" / "icon_512x512.png",
+                Path("resources") / "icons" / "icon_256x256.png",
+            ]
+        else:  # Windows/Linux
+            icon_paths = [
+                # 开发环境路径 - 优先 ICO
+                Path(__file__).parent.parent / "resources" / "icons" / "DocuRuleFix.ico",
+                Path(__file__).parent.parent / "resources" / "icons" / "icon_256x256.png",
+                # 打包后的路径
+                Path("resources") / "icons" / "DocuRuleFix.ico",
+                Path("resources") / "icons" / "icon_256x256.png",
+            ]
+
+        for icon_path in icon_paths:
+            if icon_path.exists():
+                # Windows: 尝试使用 iconbitmap
+                if sys.platform == 'win32' and icon_path.suffix == '.ico':
+                    try:
+                        self.iconbitmap(str(icon_path))
+                        return
+                    except Exception:
+                        pass
+
+                # macOS/Linux: 使用 PhotoImage
+                # 注意：需要保持对 icon 的引用，否则会被垃圾回收
+                try:
+                    self._icon = tk.PhotoImage(file=str(icon_path))
+                    self.iconphoto(True, self._icon)
+                    logger.info(f"图标已设置: {icon_path}")
+                    return
+                except Exception:
+                    pass
+
+        # macOS 特殊处理：尝试设置 dock icon
+        if sys.platform == 'darwin':
+            self._set_macos_dock_icon()
+
+    def _set_macos_dock_icon(self):
+        """macOS Dock 图标设置
+
+        注意：在 macOS 上，Tkinter/CustomTkinter 的窗口图标设置功能有限。
+        窗口标题栏的图标可以通过 iconphoto() 设置，但 Dock 中的图标需要：
+        1. 将应用打包为 .app bundle，并在 Info.plist 中指定 CFBundleIconFile
+        2. 或者使用 Cocoa API 调用（通过 pyobjc）
+        """
+        # 尝试使用 Cocoa API 设置 Dock 图标
+        try:
+            # 查找 icns 文件
+            icns_paths = [
+                Path(__file__).parent.parent / "resources" / "icons" / "DocuRuleFix.icns",
+                Path("resources") / "icons" / "DocuRuleFix.icns",
+            ]
+
+            for icns_path in icns_paths:
+                if icns_path.exists():
+                    self._icns_path = str(icns_path)
+                    # 尝试使用 pyobjc 设置 Dock 图标
+                    try:
+                        import AppKit
+
+                        # 初始化 NSApplication（如果还没有）
+                        app = AppKit.NSApplication.sharedApplication()
+
+                        # 使用 PNG 图片设置 Dock 图标
+                        png_path = Path(__file__).parent.parent / "resources" / "icons" / "icon_512x512.png"
+                        if png_path.exists():
+                            image = AppKit.NSImage.alloc().initWithContentsOfFile_(str(png_path))
+                            if image and image.isValid():
+                                app.setApplicationIconImage_(image)
+                                logger.info(f"已通过 Cocoa API 设置 Dock 图标: {png_path}")
+                                return
+                    except ImportError:
+                        pass
+
+                    logger.info(f"找到 macOS 图标文件: {icns_path}")
+                    logger.info("提示: 安装 pyobjc 可获得更好的 Dock 图标支持 (pip install pyobjc)")
+                    break
+        except Exception as e:
+            logger.debug(f"macOS Dock 图标设置失败: {e}")
 
     def _build_header(self, parent):
         """构建顶部标题栏
