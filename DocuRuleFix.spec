@@ -14,7 +14,14 @@ import sys
 from pathlib import Path
 
 # Project root directory
-project_root = Path(SPECPATH).parent.absolute()
+# Handle both cases: spec file in root or in subdirectory
+spec_path = Path(SPECPATH).resolve()
+if spec_path.name == 'DocuRuleFix.spec':
+    # Spec file is in project root
+    project_root = spec_path.parent
+else:
+    # Spec file is in a subdirectory
+    project_root = spec_path.parent.parent
 
 # Icon path
 icon_path = project_root / "src" / "resources" / "icons" / "DocuRuleFix.ico"
