@@ -4,9 +4,45 @@
 
 ## 目录
 
+- [自动构建 (推荐)](#自动构建-推荐)
 - [Windows 平台](#windows-平台)
 - [macOS 平台](#macos-平台)
 - [常见问题](#常见问题)
+
+---
+
+## 自动构建 (推荐)
+
+### 使用 GitHub Actions
+
+项目配置了 GitHub Actions，可以自动构建所有平台的版本：
+
+#### 触发自动构建
+
+1. **推送到 main 分支**
+   ```bash
+   git push origin main
+   ```
+   自动构建所有平台版本，可在 Actions 页面下载
+
+2. **创建发布版本**
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+   自动创建 Release 并附加构建产物
+
+#### 下载构建产物
+
+1. 访问 GitHub 仓库的 **Actions** 页面
+2. 选择一个工作流运行
+3. 在 **Artifacts** 部分下载对应平台的文件
+
+#### 交叉编译说明
+
+- **在 macOS 上构建 Windows 版本**: 使用 GitHub Actions (Windows runner)
+- **在 Windows 上构建 macOS 版本**: 使用 GitHub Actions (macOS runner)
+- **本地交叉编译**: 不推荐，建议使用 GitHub Actions
 
 ---
 
