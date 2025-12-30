@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Windows 打包脚本
+# -*- coding: utf-8 -*-
+"""Windows Build Script
 
-用于在 Windows 上构建 DocuRuleFix 的独立可执行文件。
+For building DocuRuleFix standalone executable on Windows.
 
-使用方法:
+Usage:
     python build_windows.py
 
-依赖:
+Dependencies:
     pip install pyinstaller
 """
 
@@ -15,6 +16,12 @@ import sys
 import shutil
 import subprocess
 from pathlib import Path
+
+# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 
 def check_dependencies():
