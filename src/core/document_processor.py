@@ -114,12 +114,21 @@ class DocumentProcessor:
                 backup_path = self._create_backup(input_path)
                 logger.info(f"创建备份: {backup_path}")
 
-            # 执行规则
-            document = self.rule_engine.execute_rules(document, fix_errors=fix_errors)
+            # 如果是修复模式，先校验获取原始错误数量
+            if fix_errors:
+                # 先执行校验，获取原始错误数量
+                original_errors = self.rule_engine.validate(document)
+                errors_count = len(original_errors)
 
-            # 获取错误信息
-            errors = self.rule_engine.get_all_errors()
-            errors_count = len(errors)
+                # 再执行修复
+                document = self.rule_engine.execute_rules(document, fix_errors=True)
+            else:
+                # 普通模式，直接执行规则
+                document = self.rule_engine.execute_rules(document, fix_errors=False)
+
+                # 获取错误信息
+                errors = self.rule_engine.get_all_errors()
+                errors_count = len(errors)
 
             # 确定输出路径
             if output_path is None:
@@ -135,10 +144,16 @@ class DocumentProcessor:
             logger.info(f"文档保存成功: {output_path}")
 
             # 构建结果消息
-            if errors_count > 0:
-                message = f"处理完成，发现 {errors_count} 个问题"
+            if fix_errors:
+                if errors_count > 0:
+                    message = f"修复完成，已修复 {errors_count} 个问题"
+                else:
+                    message = "修复完成，未发现需要修复的问题"
             else:
-                message = "处理完成，未发现问题"
+                if errors_count > 0:
+                    message = f"处理完成，发现 {errors_count} 个问题"
+                else:
+                    message = "处理完成，未发现问题"
 
             return ProcessingResult(
                 success=True,
