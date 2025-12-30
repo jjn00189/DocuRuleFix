@@ -7,8 +7,8 @@ from typing import List, Dict, Any, Optional, Callable
 from docx import Document
 from loguru import logger
 
-from ..rules.base_rule import BaseRule, ValidationError
-from ..rules.structure_rules import ThreeLineGroupValidationRule
+from rules.base_rule import BaseRule, ValidationError
+from rules.structure_rules import ThreeLineGroupValidationRule
 
 
 class RuleEngine:

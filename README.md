@@ -13,7 +13,7 @@
 
 ## 技术栈
 
-- Python 3.8+
+- Python 3.13.0
 - CustomTkinter（GUI框架）
 - python-docx（Word文档操作）
 - PyInstaller（打包）

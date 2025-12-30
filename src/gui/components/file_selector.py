@@ -4,7 +4,6 @@
 """
 
 import customtkinter as ctk
-from tkinterdnd2 import *
 from typing import Callable, Optional
 from pathlib import Path
 import tkinter as tk
@@ -94,21 +93,33 @@ class FileSelector(ctk.CTkFrame):
     def _setup_drag_drop(self):
         """设置拖拽支持"""
         try:
-            # 获取根窗口
-            try:
-                # 在 CustomTkinter 中，需要获取内部的 Tk 实例
-                root = self.winfo_toplevel()
-                TkinterDnD().bindroot(root)
+            # 获取根窗口并尝试启用拖拽
+            root = self.winfo_toplevel()
 
-                # 绑定拖拽事件
-                self.drop_zone.drop_target_register(DND_FILES)
-                self.drop_zone.dnd_bind('<<Drop>>', self._on_drop)
-                self.drop_zone.dnd_bind('<<DragEnter>>', self._on_drag_enter)
-                self.drop_zone.dnd_bind('<<DragLeave>>', self._on_drag_leave)
-            except Exception as e:
-                print(f"拖拽初始化失败（非致命）: {e}")
+            # 尝试导入并使用 tkinterdnd2
+            from tkinterdnd2 import TkinterDnD, DND_FILES
+
+            # 检查根窗口是否已启用 TkinterDnD
+            if not hasattr(root, '_tkinterDnD_initialized'):
+                # 尝试为根窗口启用拖拽支持
+                try:
+                    # 这可能会失败，因为 CustomTkinter 的主窗口已经初始化
+                    TkinterDnD.load(root)
+                    root._tkinterDnD_initialized = True
+                except:
+                    # 根窗口已经初始化，跳过
+                    pass
+
+            # 绑定拖拽事件到 drop_zone
+            self.drop_zone.drop_target_register(DND_FILES)
+            self.drop_zone.dnd_bind('<<Drop>>', self._on_drop)
+            self.drop_zone.dnd_bind('<<DragEnter>>', self._on_drag_enter)
+            self.drop_zone.dnd_bind('<<DragLeave>>', self._on_drag_leave)
+
         except ImportError:
             print("tkinterdnd2 未安装，拖拽功能不可用")
+        except Exception as e:
+            print(f"拖拽初始化失败（非致命）: {e}")
 
     def _on_drop_zone_click(self, event=None):
         """点击拖拽区域时触发浏览"""

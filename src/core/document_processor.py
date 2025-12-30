@@ -11,7 +11,7 @@ from datetime import datetime
 from docx import Document
 from loguru import logger
 
-from .rule_engine import RuleEngine
+from core.rule_engine import RuleEngine
 
 
 class CorruptedDocumentError(Exception):

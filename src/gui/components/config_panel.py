@@ -27,7 +27,6 @@ class ConfigPanel(ctk.CTkFrame):
 
         # 配置变量
         self.title_mode_var = ctk.StringVar(value="2")
-        self.fix_errors_var = ctk.BooleanVar(value=True)
         self.create_backup_var = ctk.BooleanVar(value=True)
         self.skip_corrupted_var = ctk.BooleanVar(value=False)
 
@@ -95,17 +94,6 @@ class ConfigPanel(ctk.CTkFrame):
         options_frame = ctk.CTkFrame(self, fg_color="transparent")
         options_frame.pack(fill="x", pady=(0, 10))
 
-        # 自动修复错误
-        self.fix_checkbox = ctk.CTkCheckBox(
-            options_frame,
-            text="自动修复错误",
-            variable=self.fix_errors_var,
-            command=self._on_config_change,
-            checkbox_width=20,
-            checkbox_height=20
-        )
-        self.fix_checkbox.pack(anchor="w", pady=(0, 8))
-
         # 创建备份
         self.backup_checkbox = ctk.CTkCheckBox(
             options_frame,
@@ -142,7 +130,6 @@ class ConfigPanel(ctk.CTkFrame):
         """
         return {
             "title_mode": self.title_mode_var.get(),
-            "fix_errors": self.fix_errors_var.get(),
             "create_backup": self.create_backup_var.get(),
             "skip_corrupted": self.skip_corrupted_var.get()
         }
@@ -155,9 +142,6 @@ class ConfigPanel(ctk.CTkFrame):
         """
         if "title_mode" in config:
             self.title_mode_var.set(config["title_mode"])
-
-        if "fix_errors" in config:
-            self.fix_errors_var.set(config["fix_errors"])
 
         if "create_backup" in config:
             self.create_backup_var.set(config["create_backup"])
@@ -181,22 +165,6 @@ class ConfigPanel(ctk.CTkFrame):
         """
         self.title_mode_var.set(mode)
         self._on_config_change()
-
-    def get_fix_errors(self) -> bool:
-        """获取自动修复选项
-
-        Returns:
-            是否自动修复错误
-        """
-        return self.fix_errors_var.get()
-
-    def set_fix_errors(self, value: bool):
-        """设置自动修复选项
-
-        Args:
-            value: 是否自动修复错误
-        """
-        self.fix_errors_var.set(value)
 
     def get_create_backup(self) -> bool:
         """获取创建备份选项
