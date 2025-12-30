@@ -9,37 +9,55 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build-and-release:
+    runs-on: windows-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Generate icons
+      run: |
+        python src/resources/icons/generate_icon.py
+
+    - name: Build Windows executable
+      run: |
+        python build_windows.py
+
     - name: Generate release notes
-      id: release_notes
       run: |
         # 从 git log 生成发布说明
-        VERSION=${GITHUB_REF#refs/tags/v}
-        echo "## What's Changed" > release_notes.md
-        echo "" >> release_notes.md
-        echo "### Version $VERSION" >> release_notes.md
-        echo "" >> release_notes.md
+        $VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
+        @"
+        ## DocuRuleFix $VERSION
+
+        ### Downloads
+        - **Windows**: `DocuRuleFix.exe` - 单文件可执行程序
+        - **Portable**: `DocuRuleFix-Portable.zip` - 便携版
+
+        ### What's Changed
+        "@ | Out-File -FilePath release_notes.md -Encoding utf8
 
         # 获取上一个 tag
-        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        $PREV_TAG = git describe --tags --abbrev=0 HEAD^ 2>$null
+        if ($PREV_TAG) {
+            git log --pretty=format:"- %s" "$PREV_TAG..HEAD" | Out-File -FilePath release_notes.md -Encoding utf8 -Append
+        }
 
-        if [ -n "$PREV_TAG" ]; then
-          echo "### Changelog" >> release_notes.md
-          git log --pretty=format:"- %s" $PREV_TAG..HEAD >> release_notes.md
-        fi
-
-        echo "" >> release_notes.md
-        echo "### Downloads" >> release_notes.md
-        echo "" >> release_notes.md
-        echo "- **Windows**: Download \`DocuRuleFix.exe\`" >> release_notes.md
-        echo "- **macOS**: Download \`DocuRuleFix.dmg\`" >> release_notes.md
-        echo "- **Linux**: Download \`DocuRuleFix\` binary" >> release_notes.md
+    - name: Create portable zip
+      run: |
+        Compress-Archive -Path "dist\DocuRuleFix-Portable\*" -DestinationPath "dist\DocuRuleFix-Portable.zip"
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -48,11 +66,8 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          README.md
-          docs/BUILD.md
+          dist/DocuRuleFix.exe
+          dist/DocuRuleFix-Portable.zip
+          dist/installer.nsi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Trigger builds
-      run: |
-        echo "Release created. Windows, macOS and Linux builds will be triggered automatically."

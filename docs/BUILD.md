@@ -2,11 +2,13 @@
 
 本文档介绍如何将 DocuRuleFix 打包成独立的可执行程序。
 
+**当前支持平台**: Windows
+
 ## 目录
 
 - [自动构建 (推荐)](#自动构建-推荐)
-- [Windows 平台](#windows-平台)
-- [macOS 平台](#macos-平台)
+- [Windows 本地构建](#windows-本地构建)
+- [发布版本](#发布版本)
 - [常见问题](#常见问题)
 
 ---
@@ -15,7 +17,7 @@
 
 ### 使用 GitHub Actions
 
-项目配置了 GitHub Actions，可以自动构建所有平台的版本：
+项目配置了 GitHub Actions，可以自动构建 Windows 版本：
 
 #### 触发自动构建
 
@@ -23,30 +25,22 @@
    ```bash
    git push origin main
    ```
-   自动构建所有平台版本，可在 Actions 页面下载
+   自动构建 Windows 版本，可在 Actions 页面下载
 
-2. **创建发布版本**
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-   自动创建 Release 并附加构建产物
+2. **手动触发构建**
+   - 访问 GitHub 仓库的 **Actions** 页面
+   - 选择 **Build Windows** 工作流
+   - 点击 **Run workflow**
 
 #### 下载构建产物
 
 1. 访问 GitHub 仓库的 **Actions** 页面
 2. 选择一个工作流运行
-3. 在 **Artifacts** 部分下载对应平台的文件
-
-#### 交叉编译说明
-
-- **在 macOS 上构建 Windows 版本**: 使用 GitHub Actions (Windows runner)
-- **在 Windows 上构建 macOS 版本**: 使用 GitHub Actions (macOS runner)
-- **本地交叉编译**: 不推荐，建议使用 GitHub Actions
+3. 在 **Artifacts** 部分下载 `DocuRuleFix-Windows`
 
 ---
 
-## Windows 平台
+## Windows 本地构建
 
 ### 准备工作
 
@@ -110,50 +104,31 @@ dist/
 
 ---
 
-## macOS 平台
+## 发布版本
 
-### 准备工作
-
-1. **安装 Python 3.9+**
-   ```bash
-   brew install python@3.11
-   ```
-
-2. **安装依赖**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **生成图标**
-   ```bash
-   python src/resources/icons/generate_icon.py
-   ```
-
-### 构建步骤
-
-#### 创建 .app Bundle
+### 创建 Git Tag
 
 ```bash
-python build_macos_app.py
+# 创建版本标签
+git tag v1.0.0
+
+# 推送标签到 GitHub
+git push origin v1.0.0
 ```
 
-这会在 `build/` 目录下创建 `DocuRuleFix.app`。
+### 自动发布
 
-### 使用 .app
+推送 tag 后，GitHub Actions 会自动：
+1. 在 Windows 上构建可执行文件
+2. 创建 Release
+3. 附加构建产物到 Release
 
-```bash
-# 直接运行
-open build/DocuRuleFix.app
+### 下载发布版本
 
-# 复制到 Applications 文件夹
-cp -R build/DocuRuleFix.app /Applications/
-```
-
-### 创建 DMG 安装包（可选）
-
-```bash
-python build_macos_app.py --dmg
-```
+访问 GitHub 仓库的 **Releases** 页面下载：
+- `DocuRuleFix.exe` - 单文件可执行程序
+- `DocuRuleFix-Portable.zip` - 便携版压缩包
+- `installer.nsi` - NSIS 安装脚本
 
 ---
 
@@ -166,13 +141,6 @@ python build_macos_app.py --dmg
 2. 检查图标文件是否存在
 3. 尝试在 `DocuRuleFix.spec` 中设置 `console=True` 查看错误信息
 
-### Q: macOS 图标在 Dock 中不显示
-
-**A:** 需要安装 pyobjc-framework-Cocoa：
-```bash
-pip install pyobjc-framework-Cocoa
-```
-
 ### Q: 打包后文件过大
 
 **A:** 可以在 `.spec` 文件的 `excludes` 中添加更多不需要的模块，或使用 UPX 压缩。
@@ -183,6 +151,10 @@ pip install pyobjc-framework-Cocoa
 1. 修改 `src/resources/icons/generate_icon.py` 中的 `create_icon()` 函数
 2. 运行图标生成脚本
 3. 重新构建应用
+
+### Q: 在 macOS 上如何构建 Windows 版本
+
+**A:** 使用 GitHub Actions 自动构建，或者找一个 Windows 系统进行本地构建。
 
 ---
 
