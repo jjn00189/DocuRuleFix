@@ -1,12 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller 配置文件 - DocuRuleFix
+PyInstaller configuration file - DocuRuleFix
 
-用于将 DocuRuleFix 打包成独立的可执行文件。
-使用方法:
+To build the executable:
     pyinstaller DocuRuleFix.spec
 
-或者使用构建脚本:
+Or use the build script:
     python build_windows.py
 """
 
@@ -14,31 +13,31 @@ import os
 import sys
 from pathlib import Path
 
-# 项目根目录
-project_root = Path(SPECPATH).absolute
+# Project root directory
+project_root = Path(SPECPATH).parent.absolute()
 
-# 图标路径
+# Icon path
 icon_path = project_root / "src" / "resources" / "icons" / "DocuRuleFix.ico"
 
 block_cipher = None
 
 
-# 收集所有需要的数据文件
+# Data files to include
 datas = [
-    # 配置文件
+    # Config files
     (str(project_root / "config"), "config"),
 
-    # 如果有其他资源文件，添加到这里
+    # Add other resources here if needed
     # (str(project_root / "resources"), "resources"),
 ]
 
-# 隐藏导入 - 解决一些模块无法被自动检测的问题
+# Hidden imports - for modules not detected automatically
 hiddenimports = [
-    # customtkinter 相关
+    # customtkinter related
     'customtkinter',
     'PIL._tkinter_finder',
 
-    # python-docx 相关
+    # python-docx related
     'docx',
     'docx.opc',
     'docx.oxml',
@@ -47,12 +46,12 @@ hiddenimports = [
     'lxml',
     'lxml._elementpath',
 
-    # 日志和配置
+    # Logging and config
     'loguru',
     'yaml',
     'jsonschema',
 
-    # GUI 组件
+    # GUI components
     'gui.main_window',
     'gui.main_controller',
     'gui.components.file_selector',
@@ -62,7 +61,7 @@ hiddenimports = [
     'gui.utils.theme_manager',
     'gui.utils.threading_helpers',
 
-    # 核心模块
+    # Core modules
     'core.document_processor',
     'core.rule_engine',
     'rules.base_rule',
@@ -81,7 +80,7 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # 排除不需要的模块以减小体积
+        # Exclude unnecessary modules to reduce size
         'matplotlib',
         'numpy',
         'pandas',
@@ -111,7 +110,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # 不显示控制台窗口
+    console=False,  # No console window
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
