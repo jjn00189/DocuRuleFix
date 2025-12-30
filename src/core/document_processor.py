@@ -14,6 +14,18 @@ from loguru import logger
 from .rule_engine import RuleEngine
 
 
+class CorruptedDocumentError(Exception):
+    """文档损坏异常
+
+    当文档内部结构损坏时抛出，用于跳过损坏的文档
+    """
+
+    def __init__(self, file_path: str, original_error: str):
+        self.file_path = file_path
+        self.original_error = original_error
+        super().__init__(f"文档损坏: {file_path}, 原因: {original_error}")
+
+
 class ProcessingResult:
     """处理结果"""
 
@@ -66,16 +78,21 @@ class DocumentProcessor:
         logger.info(f"设置备份目录: {backup_dir}")
 
     def process(self, input_path: str, output_path: Optional[str] = None,
-                fix_errors: bool = False) -> ProcessingResult:
+                fix_errors: bool = False, skip_corrupted: bool = False) -> ProcessingResult:
         """处理单个文档
 
         Args:
             input_path: 输入文档路径
             output_path: 输出文档路径，如果为None则覆盖原文件
             fix_errors: 是否自动修复错误
+            skip_corrupted: 是否跳过损坏的文档（抛出CorruptedDocumentError异常），
+                           True表示跳过（抛出异常让调用者处理），False表示返回错误结果
 
         Returns:
             处理结果对象
+
+        Raises:
+            CorruptedDocumentError: 当skip_corrupted=True且文档损坏时
         """
         try:
             # 验证输入文件
@@ -131,6 +148,24 @@ class DocumentProcessor:
                 message=message
             )
 
+        except KeyError as e:
+            # 处理文档内部引用损坏的情况（如 ../NULL 引用）
+            error_msg = str(e)
+            if "NULL" in error_msg or "archive" in error_msg:
+                logger.error(f"文档内部结构损坏: {input_path}, {error_msg}")
+
+                if skip_corrupted:
+                    # 抛出异常让调用者跳过此文档
+                    raise CorruptedDocumentError(input_path, error_msg)
+                else:
+                    # 返回错误结果
+                    return ProcessingResult(
+                        success=False,
+                        input_path=input_path,
+                        output_path=output_path or input_path,
+                        message=f"文档内部结构损坏（可能有损坏的图片引用）。建议用Word打开并另存为新文件。错误: {error_msg}"
+                    )
+            raise
         except Exception as e:
             logger.error(f"处理文档失败: {input_path}, 错误: {str(e)}")
             return ProcessingResult(
@@ -140,14 +175,19 @@ class DocumentProcessor:
                 message=f"处理失败: {str(e)}"
             )
 
-    def validate_only(self, input_path: str) -> ProcessingResult:
+    def validate_only(self, input_path: str, skip_corrupted: bool = False) -> ProcessingResult:
         """仅校验文档不修改
 
         Args:
             input_path: 输入文档路径
+            skip_corrupted: 是否跳过损坏的文档（抛出CorruptedDocumentError异常），
+                           True表示跳过（抛出异常让调用者处理），False表示返回错误结果
 
         Returns:
             处理结果对象
+
+        Raises:
+            CorruptedDocumentError: 当skip_corrupted=True且文档损坏时
         """
         try:
             if not os.path.exists(input_path):
@@ -177,6 +217,24 @@ class DocumentProcessor:
                 message=f"校验完成，发现 {errors_count} 个问题"
             )
 
+        except KeyError as e:
+            # 处理文档内部引用损坏的情况（如 ../NULL 引用）
+            error_msg = str(e)
+            if "NULL" in error_msg or "archive" in error_msg:
+                logger.error(f"文档内部结构损坏: {input_path}, {error_msg}")
+
+                if skip_corrupted:
+                    # 抛出异常让调用者跳过此文档
+                    raise CorruptedDocumentError(input_path, error_msg)
+                else:
+                    # 返回错误结果
+                    return ProcessingResult(
+                        success=False,
+                        input_path=input_path,
+                        output_path=input_path,
+                        message=f"文档内部结构损坏（可能有损坏的图片引用）。建议用Word打开并另存为新文件。错误: {error_msg}"
+                    )
+            raise
         except Exception as e:
             logger.error(f"校验文档失败: {input_path}, 错误: {str(e)}")
             return ProcessingResult(

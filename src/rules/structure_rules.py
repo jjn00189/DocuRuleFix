@@ -139,26 +139,57 @@ class ThreeLineGroupValidationRule(BaseRule):
     def _validate_image_line(self, paragraph: Paragraph, index: int, group_index: int) -> None:
         """校验图片行
 
+        图片行要求：
+        1. 必须包含图片
+        2. 不能包含任何文字或空格（只允许纯图片）
+        3. 只能有一张图片（只能有一个包含图片的run）
+
         Args:
             paragraph: 段落对象
             index: 段落索引
             group_index: 组索引（第几组）
         """
-        text = paragraph.text.strip()
+        # 获取完整文本内容（不strip，保留空格和换行）
+        full_text = paragraph.text
 
-        # 检查是否有文字（图片行不应该有文字）
-        if text:
-            self.errors.append(ValidationError(
-                index, 'image',
-                f'第{group_index + 1}组图片行包含文字内容，应仅为图片。文字内容: "{text[:50]}..."'
-            ))
+        # 检查是否有任何文字内容（包括空格、换行等）
+        # 图片行应该是"纯净"的，除了图片run外不应有任何text run
+        if full_text:
+            # 进一步检查：是否所有run都是图片run
+            non_image_text_found = False
+            text_content = ""
+
+            for run in paragraph.runs:
+                if run.text and not self._is_image_only_run(run):
+                    non_image_text_found = True
+                    text_content += run.text
+
+            if non_image_text_found:
+                # 显示实际内容（用repr展示隐藏字符）
+                display_text = repr(full_text[:50]) if len(repr(full_text)) > 50 else repr(full_text)
+                self.errors.append(ValidationError(
+                    index, 'image',
+                    f'第{group_index + 1}组图片行包含图片以外的字符: {display_text}'
+                ))
+
+        # 检查图片数量
+        image_count = 0
+        image_run_count = 0
+        for run in paragraph.runs:
+            if self._is_image_only_run(run):
+                image_count += 1
+                image_run_count += 1
 
         # 检查是否有图片
-        has_image = self._has_image(paragraph)
-        if not has_image:
+        if image_count == 0:
             self.errors.append(ValidationError(
                 index, 'image',
                 f'第{group_index + 1}组图片行没有图片'
+            ))
+        elif image_count > 1:
+            self.errors.append(ValidationError(
+                index, 'image',
+                f'第{group_index + 1}组图片行包含{image_count}张图片，只能有一张图片'
             ))
 
     def _has_image(self, paragraph: Paragraph) -> bool:
@@ -176,6 +207,28 @@ class ThreeLineGroupValidationRule(BaseRule):
             # 检查是否有blip元素（嵌入图片）
             if run._element.xpath('.//a:blip'):
                 return True
+        return False
+
+    def _is_image_only_run(self, run) -> bool:
+        """检查run是否只包含图片（不包含文字）
+
+        Args:
+            run: paragraph.run对象
+
+        Returns:
+            True表示run只包含图片，False表示run包含文字或既无图片也无文字
+        """
+        # 如果有文本内容，不是纯图片run
+        if run.text:
+            return False
+
+        # 检查是否包含图片元素
+        xml = run._element.xml
+        if 'graphic' in xml or 'pic:' in xml:
+            return True
+        if run._element.xpath('.//a:blip'):
+            return True
+
         return False
 
     def apply(self, document: Document) -> Document:
@@ -221,9 +274,13 @@ class ThreeLineGroupValidationRule(BaseRule):
             paragraph = document.paragraphs[index]
 
             for error in errors:
-                if error.line_type == 'image' and '包含文字内容' in error.message:
-                    # 删除图片行中的文字
-                    self._clear_text_from_paragraph(paragraph)
+                if error.line_type == 'image':
+                    if '包含文字内容' in error.message or '包含图片以外的字符' in error.message:
+                        # 删除图片行中的文字
+                        self._clear_text_from_paragraph(paragraph)
+                    elif '张图片，只能有一张图片' in error.message:
+                        # 删除多余的图片，只保留第一张
+                        self._remove_extra_images(paragraph)
                 elif error.line_type == 'title':
                     # 尝试修复标题格式
                     self._fix_title_format(paragraph, index)
@@ -255,6 +312,26 @@ class ThreeLineGroupValidationRule(BaseRule):
             if run.text:
                 run.text = ""
 
+    def _remove_extra_images(self, paragraph: Paragraph) -> None:
+        """删除段落中多余的图片，只保留第一张图片
+
+        Args:
+            paragraph: 段落对象
+        """
+        # 找到所有包含图片的run
+        image_runs = []
+        for run in paragraph.runs:
+            if self._is_image_only_run(run):
+                image_runs.append(run)
+
+        # 如果有多于1张图片，删除多余的
+        if len(image_runs) > 1:
+            # 保留第一张图片，删除其余的
+            for run in image_runs[1:]:
+                # 从段落中删除这个run
+                # 需要删除run对应的XML元素
+                run._element.getparent().remove(run._element)
+
     def _fix_title_format(self, paragraph: Paragraph, index: int) -> None:
         """尝试修复标题格式
 
@@ -264,8 +341,24 @@ class ThreeLineGroupValidationRule(BaseRule):
         """
         text = paragraph.text.strip()
 
-        # 如果缺少序号，尝试添加
-        if not re.match(r'^\d', text):
+        # 检查是否以数字开头但没有正确的分隔符
+        # 匹配：数字后直接跟非分隔符字符（.|,|）
+        match = re.match(r'^(\d+)([^.|,|\s])', text)
+        if match:
+            # 在数字后面添加 . 分隔符，保留后面的字符
+            number = match.group(1)
+            # rest 从数字后开始，不包括被匹配的非分隔符字符
+            rest = text[len(number):]
+            new_text = f"{number}.{rest}"
+
+            # 更新段落文本
+            if paragraph.runs:
+                paragraph.runs[0].text = new_text
+                # 清除其他run的文本
+                for run in paragraph.runs[1:]:
+                    run.text = ""
+        elif not re.match(r'^\d', text):
+            # 如果缺少序号，尝试添加
             group_num = (index // 3) + 1
             # 检查是否已经有分隔符，有则直接加序号
             if re.match(r'^[.|,|)]', text):
