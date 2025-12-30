@@ -15,5 +15,9 @@ loguru==0.7.2
 click==8.1.7
 tqdm==4.66.1
 
-# macOS 图标支持 (可选)
+# 打包工具
+pyinstaller>=6.0.0
+
+# 平台特定依赖
+# macOS 图标支持
 pyobjc-framework-Cocoa>=12.0; sys_platform == "darwin"

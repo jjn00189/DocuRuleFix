@@ -101,23 +101,29 @@ class MainWindow(ctk.CTk):
 
     def _set_window_icon(self):
         """设置窗口图标"""
+        # 获取资源目录基础路径
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            # PyInstaller 打包后的环境
+            resource_base = Path(sys._MEIPASS) / "src" / "resources" / "icons"
+        else:
+            # 开发环境
+            resource_base = Path(__file__).parent.parent / "resources" / "icons"
+
         # 尝试多个可能的图标路径
         # macOS 优先使用 PNG/ICNS，Windows 优先使用 ICO
         if sys.platform == 'darwin':  # macOS
             icon_paths = [
-                # 开发环境路径 - 优先 PNG（通过 tk.PhotoImage）
-                Path(__file__).parent.parent / "resources" / "icons" / "icon_512x512.png",
-                Path(__file__).parent.parent / "resources" / "icons" / "icon_256x256.png",
-                # 打包后的路径
+                resource_base / "icon_512x512.png",
+                resource_base / "icon_256x256.png",
+                # 回退到相对路径
                 Path("resources") / "icons" / "icon_512x512.png",
                 Path("resources") / "icons" / "icon_256x256.png",
             ]
         else:  # Windows/Linux
             icon_paths = [
-                # 开发环境路径 - 优先 ICO
-                Path(__file__).parent.parent / "resources" / "icons" / "DocuRuleFix.ico",
-                Path(__file__).parent.parent / "resources" / "icons" / "icon_256x256.png",
-                # 打包后的路径
+                resource_base / "DocuRuleFix.ico",
+                resource_base / "icon_256x256.png",
+                # 回退到相对路径
                 Path("resources") / "icons" / "DocuRuleFix.ico",
                 Path("resources") / "icons" / "icon_256x256.png",
             ]
@@ -144,48 +150,47 @@ class MainWindow(ctk.CTk):
 
         # macOS 特殊处理：尝试设置 dock icon
         if sys.platform == 'darwin':
-            self._set_macos_dock_icon()
+            self._set_macos_dock_icon(resource_base)
 
-    def _set_macos_dock_icon(self):
+    def _set_macos_dock_icon(self, resource_base: Path):
         """macOS Dock 图标设置
 
         注意：在 macOS 上，Tkinter/CustomTkinter 的窗口图标设置功能有限。
         窗口标题栏的图标可以通过 iconphoto() 设置，但 Dock 中的图标需要：
         1. 将应用打包为 .app bundle，并在 Info.plist 中指定 CFBundleIconFile
         2. 或者使用 Cocoa API 调用（通过 pyobjc）
+
+        Args:
+            resource_base: 资源文件基础路径
         """
         # 尝试使用 Cocoa API 设置 Dock 图标
         try:
-            # 查找 icns 文件
-            icns_paths = [
-                Path(__file__).parent.parent / "resources" / "icons" / "DocuRuleFix.icns",
-                Path("resources") / "icons" / "DocuRuleFix.icns",
-            ]
+            # 查找 icns 和 png 文件
+            icns_path = resource_base / "DocuRuleFix.icns"
+            png_path = resource_base / "icon_512x512.png"
 
-            for icns_path in icns_paths:
-                if icns_path.exists():
-                    self._icns_path = str(icns_path)
-                    # 尝试使用 pyobjc 设置 Dock 图标
-                    try:
-                        import AppKit
+            if icns_path.exists():
+                self._icns_path = str(icns_path)
 
-                        # 初始化 NSApplication（如果还没有）
-                        app = AppKit.NSApplication.sharedApplication()
+            # 尝试使用 pyobjc 设置 Dock 图标
+            try:
+                import AppKit
 
-                        # 使用 PNG 图片设置 Dock 图标
-                        png_path = Path(__file__).parent.parent / "resources" / "icons" / "icon_512x512.png"
-                        if png_path.exists():
-                            image = AppKit.NSImage.alloc().initWithContentsOfFile_(str(png_path))
-                            if image and image.isValid():
-                                app.setApplicationIconImage_(image)
-                                logger.info(f"已通过 Cocoa API 设置 Dock 图标: {png_path}")
-                                return
-                    except ImportError:
-                        pass
+                # 初始化 NSApplication（如果还没有）
+                app = AppKit.NSApplication.sharedApplication()
 
-                    logger.info(f"找到 macOS 图标文件: {icns_path}")
-                    logger.info("提示: 安装 pyobjc 可获得更好的 Dock 图标支持 (pip install pyobjc)")
-                    break
+                if png_path.exists():
+                    image = AppKit.NSImage.alloc().initWithContentsOfFile_(str(png_path))
+                    if image and image.isValid():
+                        app.setApplicationIconImage_(image)
+                        logger.info(f"已通过 Cocoa API 设置 Dock 图标: {png_path}")
+                        return
+            except ImportError:
+                pass
+
+            if icns_path.exists():
+                logger.info(f"找到 macOS 图标文件: {icns_path}")
+                logger.info("提示: 安装 pyobjc 可获得更好的 Dock 图标支持 (pip install pyobjc)")
         except Exception as e:
             logger.debug(f"macOS Dock 图标设置失败: {e}")
 

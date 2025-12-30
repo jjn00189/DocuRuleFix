@@ -6,9 +6,21 @@ DocuRuleFix 的 GUI 应用程序入口。
 import sys
 import os
 
-# 确保路径正确
-current_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.dirname(current_dir)
+# 确保路径正确 - 支持开发环境和打包后的环境
+if getattr(sys, 'frozen', False):
+    # 打包后的环境
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller 打包
+        bundle_dir = sys._MEIPASS
+        src_dir = os.path.dirname(bundle_dir)
+    else:
+        # 其他打包工具
+        src_dir = os.path.dirname(sys.executable)
+else:
+    # 开发环境
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    src_dir = os.path.dirname(current_dir)
+
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
